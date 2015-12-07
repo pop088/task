@@ -23,7 +23,7 @@ class commontask(ndb.Model):
     numofmember = ndb.IntegerProperty()
     last_update = ndb.StringProperty()
     task_name = ndb.StringProperty()
-    create_time = ndb.DateTimeProperty()
+    create_time = ndb.StringProperty()
     location=ndb.StringProperty()
     due=ndb.StringProperty()
     description=ndb.StringProperty()

@@ -186,8 +186,9 @@ class viewsinglecommontask(webapp2.RequestHandler):
 class viewsingleprivatetask(webapp2.RequestHandler):
     def get(self):
         taskid = self.request.get('taskid')
+        taskid=int(taskid)
 
-        task_query = database.privatetask.query(database.commontask.task_id == taskid)
+        task_query = database.privatetask.query(database.privatetask.task_id == taskid)
         tasks=task_query.fetch()
 
         taskname=[]
@@ -203,7 +204,8 @@ class viewsingleprivatetask(webapp2.RequestHandler):
             due.append(task.due)
             location.append(task.location)
             description.append(task.description)
-            create_time.append(task.create_time)
+            time = str(task.create_time)
+            create_time.append(time)
 
         dictPassed = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time}
         jsonObj = json.dumps(dictPassed, sort_keys=True,indent=4, separators=(',', ': '))
@@ -235,45 +237,46 @@ class viewmytask(webapp2.RequestHandler):
         jsonObj1 = json.dumps(pri, sort_keys=True,indent=4, separators=(',', ': '))
 
 
-        # commontask_query = database.commontask.query(database.commontask.creator == user_id)
-        # commontasks=commontask_query.fetch()
-        #
-        # sub_query = database.subscribe.query(database.subscribe.user_id == user_id)
-        # subs=sub_query.fetch()
-        # subtaskid=[]
-        # for sub in subs:
-        #     subtaskid.append(sub.task_id)
-        #
-        # subcommontask_query = database.commontask.query(database.commontask.task_id in subtaskid)
-        # subtasks=subcommontask_query.fetch()
-        #
-        # taskname=[]
-        # creator=[]
-        # due=[]
-        # location=[]
-        # description=[]
-        # numofmember=[]
-        #
-        # for task in commontasks:
-        #     taskname.append(task.task_name)
-        #     creator.append(task.creator)
-        #     due.append(task.due)
-        #     location.append(task.location)
-        #     description.append(task.description)
-        #     numofmember.append(task.numofmember)
-        #
-        # for tasks in subtasks:
-        #     taskname.append(tasks.task_name)
-        #     creator.append(tasks.creator)
-        #     due.append(tasks.due)
-        #     location.append(tasks.location)
-        #     description.append(tasks.description)
-        #     numofmember.append(tasks.numofmember)
-        #
-        # commonjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'numofmember':numofmember}
-        # jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
+        commontask_query = database.commontask.query(database.commontask.creator == user_id)
+        commontasks=commontask_query.fetch()
+
+        sub_query = database.subscribe.query(database.subscribe.user_id == user_id)
+        subs=sub_query.fetch()
+        subtaskid=[]
+        for sub in subs:
+            subtaskid.append(sub.task_id)
+
+        subcommontask_query = database.commontask.query()
+        subtasks=subcommontask_query.fetch()
+
+        taskname=[]
+        creator=[]
+        due=[]
+        location=[]
+        description=[]
+        numofmember=[]
+
+        for task in commontasks:
+            taskname.append(task.task_name)
+            creator.append(task.creator)
+            due.append(task.due)
+            location.append(task.location)
+            description.append(task.description)
+            numofmember.append(task.numofmember)
+
+        for tasks in subtasks:
+            if tasks.task_id in subtaskid:
+                taskname.append(tasks.task_name)
+                creator.append(tasks.creator)
+                due.append(tasks.due)
+                location.append(tasks.location)
+                description.append(tasks.description)
+                numofmember.append(tasks.numofmember)
+
+        commonjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'numofmember':numofmember}
+        jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
-        # self.response.write(jsonObj2)
+        self.response.write(jsonObj2)
 
 class viewallcommontask(webapp2.RequestHandler):
     def get(self):
