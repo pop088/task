@@ -19,12 +19,13 @@ class createprivatetask(webapp2.RequestHandler):
 
         taskname=self.request.params['taskname']
         creator=self.request.params['creator']
-        due=self.request.param['due']
-        location=self.request.param['location']
-        description=self.request.param['description']
-        taskid=hash(taskname)
+        due=self.request.params['due']
+        # location=self.request.params['location']
+        description=self.request.params['description']
+        taskid=self.request.params['taskid']
+        taskid=int(taskid)
 
-        task=database.privatetask(task_name=taskname,creator=creator,due=due,locaton=location,description=description,task_id=taskid)
+        task=database.privatetask(finished=0,task_name=taskname,creator=creator,due=due,description=description,task_id=taskid)
 
         task.put()
 
@@ -38,9 +39,9 @@ class updateprivatetask(webapp2.RequestHandler):
 
         for task in tasks:
             task.taskname=self.request.params['taskname']
-            task.due=self.request.param['due']
-            task.location=self.request.param['location']
-            task.description=self.request.param['description']
+            task.due=self.request.params['due']
+            task.location=self.request.params['location']
+            task.description=self.request.params['description']
             task.put()
 
 class deleteprivatetask(webapp2.RequestHandler):
@@ -57,16 +58,14 @@ class deleteprivatetask(webapp2.RequestHandler):
 class createcommontask(webapp2.RequestHandler):
     def post(self):
 
-        # position=self.request.params['latitude']+"%"+self.request.params['longitude']+")"
-
         taskname=self.request.params['taskname']
         creator=self.request.params['creator']
-        due=self.request.param['due']
-        location=self.request.param['location']
-        description=self.request.param['description']
-        taskid=hash(taskname)
+        due=self.request.params['due']
+        # location=self.request.params['location']
+        description=self.request.params['description']
+        taskid=self.request.params['taskid']
 
-        task=database.privatetask(task_name=taskname,creator=creator,due=due,locaton=location,description=description,task_id=taskid,numofmember=1)
+        task=database.privatetask(finished=0,task_name=taskname,creator=creator,due=due,description=description,task_id=taskid,numofmember=1)
 
         task.put()
 
@@ -80,9 +79,9 @@ class updatecommontask(webapp2.RequestHandler):
 
         for task in tasks:
             task.taskname=self.request.params['taskname']
-            task.due=self.request.param['due']
-            task.location=self.request.param['location']
-            task.description=self.request.param['description']
+            task.due=self.request.params['due']
+            task.location=self.request.params['location']
+            task.description=self.request.params['description']
             task.put()
 
 class deletecommontask(webapp2.RequestHandler):
@@ -99,12 +98,9 @@ class deletecommontask(webapp2.RequestHandler):
 class createcomment(webapp2.RequestHandler):
     def post(self):
 
-        # position=self.request.params['latitude']+"%"+self.request.params['longitude']+")"
-
-
         creator=self.request.params['creator']
         content=self.request.params['content']
-        taskid=self.request.param['taskid']
+        taskid=self.request.params['taskid']
         commentid=hash(content)
 
         comment=database.comment(task_id=taskid,creator=creator,comment_content=content,comment_id=commentid)
@@ -114,11 +110,9 @@ class createcomment(webapp2.RequestHandler):
 class createreply(webapp2.RequestHandler):
     def post(self):
 
-        # position=self.request.params['latitude']+"%"+self.request.params['longitude']+")"
-
         creator=self.request.params['creator']
         content=self.request.params['content']
-        commentid=self.request.param['commentid']
+        commentid=self.request.params['commentid']
         replyid=hash(content)
 
         reply=database.reply(reply_id=replyid,creator=creator,reply_content=content,comment_id=commentid)
@@ -133,13 +127,13 @@ class viewsinglecommontask(webapp2.RequestHandler):
         tasks=task_query.fetch()
 
         for task in tasks:
-            taskname=task.task_name
-            creator=task.creator
-            due=task.due
-            location=task.location
-            description=task.description
-            create_time=task.create_time
-            numofmember=task.numofmember
+            taskname=[task.task_name]
+            creator=[task.creator]
+            due=[task.due]
+            location=[task.location]
+            description=[task.description]
+            create_time=[task.create_time]
+            numofmember=[task.numofmember]
 
 # get task
 
@@ -196,13 +190,20 @@ class viewsingleprivatetask(webapp2.RequestHandler):
         task_query = database.privatetask.query(database.commontask.task_id == taskid)
         tasks=task_query.fetch()
 
+        taskname=[]
+        creator=[]
+        due=[]
+        location=[]
+        description=[]
+        create_time=[]
+
         for task in tasks:
-            taskname=task.task_name
-            creator=task.creator
-            due=task.due
-            location=task.location
-            description=task.description
-            create_time=task.create_time
+            taskname.append(task.task_name)
+            creator.append(task.creator)
+            due.append(task.due)
+            location.append(task.location)
+            description.append(task.description)
+            create_time.append(task.create_time)
 
         dictPassed = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time}
         jsonObj = json.dumps(dictPassed, sort_keys=True,indent=4, separators=(',', ': '))
@@ -215,49 +216,86 @@ class viewmytask(webapp2.RequestHandler):
         privatetask_query = database.privatetask.query(database.commontask.creator == user_id)
         privatetasks=privatetask_query.fetch()
 
+        pritaskname=[]
+        pricreator=[]
+        pridue=[]
+        prilocation=[]
+        pridescription=[]
+        pritaskid=[]
+
         for task in privatetasks:
-            pritaskname=task.task_name
-            pricreator=task.creator
-            pridue=task.due
-            prilocation=task.location
-            pridescription=task.description
-            pricreate_time=task.create_time
+            pritaskname.append(task.task_name)
+            pricreator.append(task.creator)
+            pridue.append(task.due)
+            prilocation.append(task.location)
+            pridescription.append(task.description)
+            pritaskid.append(task.task_id)
 
-        pri = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,'pricreate_time':pricreate_time}
+        pri = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,'pritaskid':pritaskid}
         jsonObj1 = json.dumps(pri, sort_keys=True,indent=4, separators=(',', ': '))
+
+
+        # commontask_query = database.commontask.query(database.commontask.creator == user_id)
+        # commontasks=commontask_query.fetch()
+        #
+        # sub_query = database.subscribe.query(database.subscribe.user_id == user_id)
+        # subs=sub_query.fetch()
+        # subtaskid=[]
+        # for sub in subs:
+        #     subtaskid.append(sub.task_id)
+        #
+        # subcommontask_query = database.commontask.query(database.commontask.task_id in subtaskid)
+        # subtasks=subcommontask_query.fetch()
+        #
+        # taskname=[]
+        # creator=[]
+        # due=[]
+        # location=[]
+        # description=[]
+        # numofmember=[]
+        #
+        # for task in commontasks:
+        #     taskname.append(task.task_name)
+        #     creator.append(task.creator)
+        #     due.append(task.due)
+        #     location.append(task.location)
+        #     description.append(task.description)
+        #     numofmember.append(task.numofmember)
+        #
+        # for tasks in subtasks:
+        #     taskname.append(tasks.task_name)
+        #     creator.append(tasks.creator)
+        #     due.append(tasks.due)
+        #     location.append(tasks.location)
+        #     description.append(tasks.description)
+        #     numofmember.append(tasks.numofmember)
+        #
+        # commonjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'numofmember':numofmember}
+        # jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
-
-        commontask_query = database.commontask.query(database.commontask.creator == user_id)
-        commontasks=commontask_query.fetch()
-
-        for task in commontasks:
-            taskname=task.task_name
-            creator=task.creator
-            due=task.due
-            location=task.location
-            description=task.description
-            create_time=task.create_time
-            numofmember=task.numofmember
-
-        commonjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember}
-        jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
-        self.response.write(jsonObj2)
+        # self.response.write(jsonObj2)
 
 class viewallcommontask(webapp2.RequestHandler):
     def get(self):
         task_query = database.commontask.query()
         tasks=task_query.fetch()
 
-        for task in tasks:
-            taskname=task.task_name
-            creator=task.creator
-            due=task.due
-            location=task.location
-            description=task.description
-            create_time=task.create_time
-            numofmember=task.numofmember
+        taskname=[]
+        creator=[]
+        due=[]
+        location=[]
+        description=[]
+        numofmember=[]
 
-        taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember}
+        for task in tasks:
+            taskname.append(task.task_name)
+            creator.append(task.creator)
+            due.append(task.due)
+            location.append(task.location)
+            description.append(task.description)
+            numofmember.append(task.numofmember)
+
+        taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'numofmember':numofmember}
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
 

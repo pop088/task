@@ -3,8 +3,6 @@ __author__ = 'sm'
 from google.appengine.ext import ndb
 from google.appengine.ext import blobstore
 
-
-
 class imagedata(ndb.Model):
      user_id = ndb.StringProperty()
      blob_key= ndb.BlobKeyProperty()
@@ -15,6 +13,10 @@ class imagedata(ndb.Model):
      name = ndb.StringProperty()
      position=ndb.StringProperty()
 
+class subscribe(ndb.Model):
+    task_id=ndb.IntegerProperty()
+    user_id=ndb.StringProperty()
+
 class commontask(ndb.Model):
     task_id = ndb.IntegerProperty()
     creator=ndb.StringProperty()
@@ -23,17 +25,19 @@ class commontask(ndb.Model):
     task_name = ndb.StringProperty()
     create_time = ndb.DateTimeProperty()
     location=ndb.StringProperty()
-    due=ndb.DateTimeProperty()
+    due=ndb.StringProperty()
     description=ndb.StringProperty()
+    finished=ndb.IntegerProperty()
 
 class privatetask(ndb.Model):
     task_id = ndb.IntegerProperty()
     creator=ndb.StringProperty()
-    due=ndb.DateTimeProperty()
+    due=ndb.StringProperty()
     task_name = ndb.StringProperty()
     create_time = ndb.DateTimeProperty(auto_now_add=True)
     location=ndb.StringProperty()
     description=ndb.StringProperty()
+    finished=ndb.IntegerProperty()
 
 class comment(ndb.Model):
     task_id=ndb.IntegerProperty()
