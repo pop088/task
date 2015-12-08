@@ -14,8 +14,10 @@ class imagedata(ndb.Model):
      position=ndb.StringProperty()
 
 class subscribe(ndb.Model):
-    task_id=ndb.IntegerProperty()
+    commontask_id=ndb.IntegerProperty()
     user_id=ndb.StringProperty()
+    overdue=ndb.IntegerProperty()
+    finish=ndb.IntegerProperty()
 
 class commontask(ndb.Model):
     task_id = ndb.IntegerProperty()
@@ -23,7 +25,7 @@ class commontask(ndb.Model):
     numofmember = ndb.IntegerProperty()
     last_update = ndb.StringProperty()
     task_name = ndb.StringProperty()
-    create_time = ndb.StringProperty()
+    create_time = ndb.DateTimeProperty(auto_now_add=True)
     location=ndb.StringProperty()
     due=ndb.StringProperty()
     description=ndb.StringProperty()
