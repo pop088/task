@@ -129,9 +129,12 @@ class createreply(webapp2.RequestHandler):
         creator=self.request.params['creator']
         content=self.request.params['content']
         commentid=self.request.params['commentid']
-        replyid=hash(content)
+        taskid=self.request.params['taskid']
+        replyto=self.request.params['replyto']
+        taskid=int(taskid)
+        replyid=hash(content+str(taskid))
 
-        reply=database.reply(reply_id=replyid,creator=creator,reply_content=content,comment_id=commentid)
+        reply=database.reply(reply_id=replyid,creator=creator,reply_content=content,comment_id=commentid,task_id=taskid,replyto=replyto)
 
         reply.put()
 
@@ -171,25 +174,26 @@ class viewsinglecommontask(webapp2.RequestHandler):
 
 #get comment
 
-        # reply_query = database.reply.query(ndb.AND(
-        #     database.reply.comment_id in comment_id,database.reply.create_time!=None)).order(database.reply.create_time)
-        # replys=reply_query.fetch()
-        #
-        # reply_content=[]
-        # replycomment_id=[]
-        # replycreate_time=[]
-        # replycreator=[]
-        #
-        # for reply in replys:
-        #     reply_content.append(reply.comment_content)
-        #     replycomment_id.append(reply.comment_id)
-        #     replycreate_time.append(reply.create_time)
-        #     replycreator.append(reply.creator)
+        reply_query = database.reply.query(ndb.AND(
+            database.reply.task_id == taskid,database.reply.create_time!=None)).order(database.reply.create_time)
+        replys=reply_query.fetch()
 
+        reply_content=[]
+        replycomment_id=[]
+        replycreate_time=[]
+        replycreator=[]
+        replyto=[]
+
+        for reply in replys:
+            reply_content.append(reply.comment_content)
+            replycomment_id.append(reply.comment_id)
+            replycreate_time.append(str(reply.create_time))
+            replycreator.append(reply.creator)
+            replyto.append(reply.replyto)
 # get replys
 
 
-        taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember,'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator}
+        taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember,'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,'reply_content':reply_content,' replycomment_id': replycomment_id,'replycreate_time':replycreate_time,'replycreator':replycreator,'replyto':replyto}
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
 
