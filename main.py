@@ -3,9 +3,11 @@ from google.appengine.api import users, files, images
 from google.appengine.ext import blobstore
 from google.appengine.ext import ndb
 from google.appengine.ext.webapp import blobstore_handlers
+from google.appengine.api import mail
 import time
 import json
 import database
+import datetime
 
 class MainPage(webapp2.RequestHandler):
     def get(self):
@@ -25,22 +27,22 @@ class createprivatetask(webapp2.RequestHandler):
         taskid=self.request.params['taskid']
         taskid=int(taskid)
 
-        task=database.privatetask(finished=0,task_name=taskname,creator=creator,due=due,description=description,task_id=taskid)
+        task=database.privatetask(finished=0,overdue=0,task_name=taskname,creator=creator,due=due,description=description,task_id=taskid)
 
         task.put()
 
 class updateprivatetask(webapp2.RequestHandler):
     def post(self):
 
-        taskid = self.request.get('taskid')
-
+        taskid=self.request.params['taskid']
+        taskid=int(taskid)
         task_query = database.privatetask.query(database.privatetask.task_id == taskid)
         tasks=task_query.fetch()
 
         for task in tasks:
             task.taskname=self.request.params['taskname']
             task.due=self.request.params['due']
-            task.location=self.request.params['location']
+            # task.location=self.request.params['location']
             task.description=self.request.params['description']
             task.put()
 
@@ -54,6 +56,18 @@ class deleteprivatetask(webapp2.RequestHandler):
 
         for task in tasks:
             task.key.delete()
+
+class finishprivatetask(webapp2.RequestHandler):
+    def post(self):
+
+        taskid=self.request.params['taskid']
+        taskid=int(taskid)
+        task_query = database.privatetask.query(database.privatetask.task_id == taskid)
+        tasks=task_query.fetch()
+
+        for task in tasks:
+            task.finished=1
+            task.put()
 
 class createcommontask(webapp2.RequestHandler):
     def post(self):
@@ -102,7 +116,8 @@ class createcomment(webapp2.RequestHandler):
         creator=self.request.params['creator']
         content=self.request.params['content']
         taskid=self.request.params['taskid']
-        commentid=hash(content)
+        taskid=int(taskid)
+        commentid=hash(content+str(taskid))
 
         comment=database.comment(task_id=taskid,creator=creator,comment_content=content,comment_id=commentid)
 
@@ -139,20 +154,21 @@ class viewsinglecommontask(webapp2.RequestHandler):
 
 # get task
 
-        # comment_query = database.comment.query(ndb.AND(
-        #     database.comment.task_id == taskid,database.comment.create_time!=None)).order(database.comment.create_time)
-        # comments=comment_query.fetch()
-        #
-        # comment_content=[]
-        # comment_id=[]
-        # commentcreate_time=[]
-        # commentcreator=[]
-        #
-        # for comment in comments:
-        #     comment_content.append(comment.comment_content)
-        #     comment_id.append(comment.comment_id)
-        #     commentcreate_time.append(comment.create_time)
-        #     commentcreator.append(comment.creator)
+        comment_query = database.comment.query(ndb.AND(
+            database.comment.task_id == taskid,database.comment.create_time!=None)).order(database.comment.create_time)
+        comments=comment_query.fetch()
+
+        comment_content=[]
+        comment_id=[]
+        commentcreate_time=[]
+        commentcreator=[]
+
+        for comment in comments:
+            comment_content.append(comment.comment_content)
+            comment_id.append(comment.comment_id)
+            commentcreate_time.append(str(comment.create_time))
+            commentcreator.append(comment.creator)
+
 #get comment
 
         # reply_query = database.reply.query(ndb.AND(
@@ -173,7 +189,7 @@ class viewsinglecommontask(webapp2.RequestHandler):
 # get replys
 
 
-        taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember}
+        taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember,'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator}
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
 
@@ -226,6 +242,8 @@ class viewmytask(webapp2.RequestHandler):
         prilocation=[]
         pridescription=[]
         pritaskid=[]
+        prifinished=[]
+        prioverdue=[]
 
         for task in privatetasks:
             pritaskname.append(task.task_name)
@@ -234,6 +252,8 @@ class viewmytask(webapp2.RequestHandler):
             prilocation.append(task.location)
             pridescription.append(task.description)
             pritaskid.append(task.task_id)
+            prifinished.append(task.finished)
+            prioverdue.append(task.overdue)
 
         # pri = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,'pritaskid':pritaskid}
         # jsonObj1 = json.dumps(pri, sort_keys=True,indent=4, separators=(',', ': '))
@@ -276,9 +296,9 @@ class viewmytask(webapp2.RequestHandler):
                 location.append(tasks.location)
                 description.append(tasks.description)
                 numofmember.append(tasks.numofmember)
-                task_id.append(task.tasks_id)
+                task_id.append(tasks.tasks_id)
 
-        commonjson = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,'pritaskid':pritaskid,'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'numofmember':numofmember,'taskid':task_id}
+        commonjson = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,'pritaskid':pritaskid,'prifinished':prifinished,'prioverdue':prioverdue,'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'numofmember':numofmember,'taskid':task_id}
         jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj2)
 
@@ -306,6 +326,57 @@ class viewallcommontask(webapp2.RequestHandler):
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
 
+class updateprivateedue(webapp2.RequestHandler):
+    def get(self):
+        task_query = database.privatetask.query()
+        tasks=task_query.fetch()
+
+        for task in tasks:
+            due = task.due
+            duesplit=due.split(" ")
+            if len(duesplit)!=2:
+                break
+            date=duesplit[0]
+            time=duesplit[1]
+            datesplit = date.split("-")
+            if len(datesplit)!=2:
+                break
+            year = datesplit[0]
+            month = datesplit[1]
+            day = datesplit[2]
+            timesplit = time.split(":")
+            if len(timesplit)!=2:
+                break
+            hour = timesplit[0]
+            minute = timesplit[1]
+
+            nowtime = str(datetime.datetime.now())
+            nowyear = nowtime[:4]
+            nowmonth= nowtime[5:7]
+            nowday = nowtime[8:10]
+            nowhour = nowtime[12:14]
+            nowminute = nowtime[15:17]
+            if int(nowyear)>int(year):
+                task.overdue =1
+            else:
+                if int(nowmonth)>int(month):
+                    task.overdue =1
+                else:
+                    if int(nowday)>int(day):
+                        task.overdue =1
+                    elif int(nowday)==int(day)-1 and nowhour==hour and nowminute==nowminute:
+                        mail.send_mail(sender="TASK :: info <sunming2725@gmail.com>",
+                        to=str(task.creator),
+                        subject=task.name+"(Due Reminder From TASK)",
+                        body="There is only 1 days left for "+task.name)
+                    else:
+                        if int(nowhour)>int(hour):
+                            task.overdue =1
+                        else:
+                            if int(nowminute)>int(minute):
+                                task.overdue =1
+            task.put()
+
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
@@ -320,4 +391,7 @@ app = webapp2.WSGIApplication([
     ('/updatecommontask', updatecommontask),
     ('/deleteprivatetask', deleteprivatetask),
     ('/deletecommontask', deletecommontask),
+    ('/finishprivatetask', finishprivatetask),
+    ('/updateprivateedue', updateprivateedue)
+
 ], debug=True)

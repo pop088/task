@@ -1,0 +1,4 @@
+cron:
+- description: update
+  url: /updateprivateedue
+  schedule: every 5 minutes

@@ -17,7 +17,7 @@ class subscribe(ndb.Model):
     commontask_id=ndb.IntegerProperty()
     user_id=ndb.StringProperty()
     overdue=ndb.IntegerProperty()
-    finish=ndb.IntegerProperty()
+    finished=ndb.IntegerProperty()
 
 class commontask(ndb.Model):
     task_id = ndb.IntegerProperty()
@@ -40,6 +40,7 @@ class privatetask(ndb.Model):
     location=ndb.StringProperty()
     description=ndb.StringProperty()
     finished=ndb.IntegerProperty()
+    overdue=ndb.IntegerProperty()
 
 class comment(ndb.Model):
     task_id=ndb.IntegerProperty()
