@@ -209,9 +209,16 @@ class viewsinglecommontask(webapp2.RequestHandler):
             replyto.append(reply.replyto)
 # get replys
 
+        subquery=database.subscribe.query(database.subscribe.commontask_id == taskid)
+        sub=reply_query.fetch()
+
+        member=[]
+        for s in sub:
+            member.append(s.user_id)
+
 
         taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember,
-                    'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,
+                    'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,'member':member,
                     'reply_content':reply_content,'replycomment_id': replycomment_id,'replycreate_time':replycreate_time,'replycreator':replycreator,'replyto':replyto}
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
