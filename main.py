@@ -4,10 +4,13 @@ from google.appengine.ext import blobstore
 from google.appengine.ext import ndb
 from google.appengine.ext.webapp import blobstore_handlers
 from google.appengine.api import mail
+from google.appengine.ext import db
 import time
 import json
 import database
 import datetime
+import os
+import pytz
 
 class MainPage(webapp2.RequestHandler):
     def get(self):
@@ -27,7 +30,8 @@ class createprivatetask(webapp2.RequestHandler):
         taskid=self.request.params['taskid']
         taskid=int(taskid)
 
-        task=database.privatetask(finished=0,overdue=0,task_name=taskname,creator=creator,due=due,description=description,task_id=taskid)
+        task=database.privatetask(finished=0,overdue=0,task_name=taskname,creator=creator,due=due,description=description,
+                                  task_id=taskid)
 
         task.put()
 
@@ -79,6 +83,7 @@ class createcommontask(webapp2.RequestHandler):
         description=self.request.params['description']
         taskid=self.request.params['taskid']
         taskid=int(taskid)
+
 
         task=database.commontask(finished=0,task_name=taskname,creator=creator,due=due,description=description,task_id=taskid,numofmember=0)
 
@@ -132,6 +137,7 @@ class createreply(webapp2.RequestHandler):
         taskid=self.request.params['taskid']
         replyto=self.request.params['replyto']
         taskid=int(taskid)
+        commentid=int(commentid)
         replyid=hash(content+str(taskid))
 
         reply=database.reply(reply_id=replyid,creator=creator,reply_content=content,comment_id=commentid,task_id=taskid,replyto=replyto)
@@ -146,14 +152,23 @@ class viewsinglecommontask(webapp2.RequestHandler):
         task_query = database.commontask.query(database.commontask.task_id == taskid)
         tasks=task_query.fetch()
 
+        taskname=[]
+        creator=[]
+        due=[]
+        location=[]
+        description=[]
+        create_time=[]
+        numofmember=[]
+
         for task in tasks:
-            taskname=[task.task_name]
-            creator=[task.creator]
-            due=[task.due]
-            location=[task.location]
-            description=[task.description]
-            create_time=[str(task.create_time)]
-            numofmember=[task.numofmember]
+            taskname.append(task.task_name)
+            creator.append(task.creator)
+            due.append(task.due)
+            # location=[task.location]
+            description.append(task.description)
+            finals=transtime(task.create_time)
+            create_time.append(finals)
+            numofmember.append(task.numofmember)
 
 # get task
 
@@ -169,7 +184,8 @@ class viewsinglecommontask(webapp2.RequestHandler):
         for comment in comments:
             comment_content.append(comment.comment_content)
             comment_id.append(comment.comment_id)
-            commentcreate_time.append(str(comment.create_time))
+            finalsss=transtime(comment.create_time)
+            commentcreate_time.append(finalsss)
             commentcreator.append(comment.creator)
 
 #get comment
@@ -185,15 +201,18 @@ class viewsinglecommontask(webapp2.RequestHandler):
         replyto=[]
 
         for reply in replys:
-            reply_content.append(reply.comment_content)
+            reply_content.append(reply.reply_content)
             replycomment_id.append(reply.comment_id)
-            replycreate_time.append(str(reply.create_time))
+            finalss=transtime(reply.create_time)
+            replycreate_time.append(finalss)
             replycreator.append(reply.creator)
             replyto.append(reply.replyto)
 # get replys
 
 
-        taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember,'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,'reply_content':reply_content,' replycomment_id': replycomment_id,'replycreate_time':replycreate_time,'replycreator':replycreator,'replyto':replyto}
+        taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember,
+                    'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,
+                    'reply_content':reply_content,'replycomment_id': replycomment_id,'replycreate_time':replycreate_time,'replycreator':replycreator,'replyto':replyto}
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
 
@@ -237,7 +256,7 @@ class viewmytask(webapp2.RequestHandler):
     def get(self):
         user_id = self.request.get('userid')
 
-        privatetask_query = database.privatetask.query(database.commontask.creator == user_id)
+        privatetask_query = database.privatetask.query(database.privatetask.creator == user_id)
         privatetasks=privatetask_query.fetch()
 
         pritaskname=[]
@@ -292,17 +311,29 @@ class viewmytask(webapp2.RequestHandler):
             numofmember.append(task.numofmember)
             task_id.append(task.task_id)
 
+        jointaskname=[]
+        joincreator=[]
+        joindue=[]
+        joinlocation=[]
+        joindescription=[]
+        joinnumofmember=[]
+        jointask_id=[]
+
         for tasks in subtasks:
             if tasks.task_id in subtaskid:
-                taskname.append(tasks.task_name)
-                creator.append(tasks.creator)
-                due.append(tasks.due)
-                location.append(tasks.location)
-                description.append(tasks.description)
-                numofmember.append(tasks.numofmember)
-                task_id.append(tasks.tasks_id)
+                jointaskname.append(tasks.task_name)
+                joincreator.append(tasks.creator)
+                joindue.append(tasks.due)
+                joinlocation.append(tasks.location)
+                joindescription.append(tasks.description)
+                joinnumofmember.append(tasks.numofmember)
+                jointask_id.append(tasks.tasks_id)
 
-        commonjson = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,'pritaskid':pritaskid,'prifinished':prifinished,'prioverdue':prioverdue,'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'numofmember':numofmember,'taskid':task_id}
+
+        commonjson = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,
+                      'pritaskid':pritaskid,'prifinished':prifinished,'prioverdue':prioverdue,'taskname':taskname,'creator':creator,'due':due,
+                      'location':location,'description':description,'numofmember':numofmember,'taskid':task_id,'jointaskname':jointaskname,'joincreator':joincreator,
+                      'joindue':joindue,'joinlocation':joinlocation,'joindescription':joindescription,'joinnumofmember':joinnumofmember,'jointaskid':jointask_id}
         jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj2)
 
@@ -381,21 +412,169 @@ class updateprivateedue(webapp2.RequestHandler):
                                 task.overdue =1
             task.put()
 
+class viewreply(webapp2.RequestHandler):
+    def get(self):
+        commentid = self.request.get('commentid')
+        commentid=int(commentid)
+
+        reply_query = database.reply.query(ndb.AND(
+            database.reply.comment_id == commentid,database.reply.create_time!=None)).order(database.reply.create_time)
+        replys=reply_query.fetch()
+
+        reply_content=[]
+        replycomment_id=[]
+        replycreate_time=[]
+        replycreator=[]
+        replyto=[]
+
+        for reply in replys:
+            reply_content.append(reply.reply_content)
+            replycomment_id.append(reply.comment_id)
+            finals=transtime(reply.create_time)
+            replycreate_time.append(finals)
+            replycreator.append(reply.creator)
+            replyto.append(reply.replyto)
+# get replys
+
+
+        taskjson = {'reply_content':reply_content,'replycomment_id': replycomment_id,'replycreate_time':replycreate_time,'replycreator':replycreator,'replyto':replyto}
+        jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
+        self.response.write(jsonObj1)
+
+class searchtask(webapp2.RequestHandler):
+    def get(self):
+
+        searchname=self.request.get('searchname')
+
+        task_query = database.commontask.query()
+        tasks=task_query.fetch()
+
+        taskname=[]
+        taskid=[]
+
+        for task in tasks:
+            if searchname in task.description or searchname in task.task_name:
+                taskname.append(task.task_name)
+                taskid.append(task.task_id)
+
+
+        taskjson = {'taskname':taskname,'taskid':taskid}
+        jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
+        self.response.write(jsonObj1)
+
+class suggest(webapp2.RequestHandler):
+    def get(self):
+        user_id = self.request.get('userid')
+
+        mytask_query = database.commontask.query(database.commontask.creator == user_id)
+        mytasks=mytask_query.fetch()
+        mytaskname=[]
+
+# join part
+        alltask_query = database.commontask.query()
+        alltask=alltask_query.fetch()
+        alltaskname=[]
+
+        for tasks in alltask:
+            alltaskname.append(tasks.task_name)
+        for ta in mytasks:
+            mytaskname.append(ta.task_name)
+
+        finaltaskname=[]
+        for task in mytaskname:
+            init=0
+            tmp=""
+            for i in alltaskname:
+                if le(task,i)<1 and le(task,i)>init and i not in finaltaskname:
+                    tmp=i
+                    init=le(task,i)
+            finaltaskname.append(tmp)
+
+
+        taskname=[]
+        creator=[]
+        due=[]
+        numofmember=[]
+        task_id=[]
+
+        for t in alltask:
+            if t.task_name in finaltaskname:
+                taskname.append(t.task_name)
+                creator.append(t.creator)
+                due.append(t.due)
+                numofmember.append(t.numofmember)
+                task_id.append(t.task_id)
+
+        commonjson = {'taskname':taskname,'creator':creator,'due':due,'numofmember':numofmember,'taskid':task_id}
+        jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
+        self.response.write(jsonObj2)
+
+def transtime(time):
+        time2=str(time)
+        time3=time2[:19]
+        t4=time3.split(" ")
+        day=t4[0][8:10]
+        hour=t4[1][:2]
+        inthour=int(hour)
+        intday=int(day)
+        if inthour>=6:
+            inthour-=6
+        else:
+            inthour=inthour+24-6
+            intday-=1
+
+        newhour=str(inthour)
+        if inthour<10:
+            newhour="0"+str(inthour)
+
+        newday=str(intday)
+
+        finals=t4[0][:8]+newday+" "+newhour+t4[1][2:5]
+        return finals
+
+def le(input_x, input_y):
+        xlen = len(input_x) + 1
+        ylen = len(input_y) + 1
+
+        dp = []
+        for p in range(xlen):
+            dp.append([])
+            for q in range(ylen):
+                dp[p].append(0)
+
+        for i in range(0, xlen):
+            dp[i][0] = i
+        for j in range(0, ylen):
+            dp[0][j] = j
+
+        for i in range(1, xlen):
+            for j in range(1, ylen):
+                if input_x[i - 1] == input_y[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1]
+                else:
+                    dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+        similarity = 1.0-float(dp[xlen-1][ylen-1])/float(max(xlen-1,ylen-1))
+        return similarity
+
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/createprivatetask',createprivatetask),
     ('/createcommontask', createcommontask),
     ('/createcomment', createcomment),
+    ('/createreply', createreply),
     ('/viewsinglecommontask', viewsinglecommontask),
     ('/viewsingleprivatetask', viewsingleprivatetask),
     ('/viewmytask', viewmytask),
     ('/viewallcommontask', viewallcommontask),
+    ('/viewreply', viewreply),
     ('/updateprivatetask', updateprivatetask),
     ('/updatecommontask', updatecommontask),
     ('/deleteprivatetask', deleteprivatetask),
     ('/deletecommontask', deletecommontask),
     ('/finishprivatetask', finishprivatetask),
-    ('/updateprivateedue', updateprivateedue)
+    ('/updateprivateedue', updateprivateedue),
+    ('/searchtask', searchtask),
+    ('/suggest', suggest)
 
 ], debug=True)

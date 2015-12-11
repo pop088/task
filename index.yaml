@@ -1,6 +1,11 @@
 indexes:
 - kind: reply
   properties:
+  - name: comment_id
+  - name: create_time
+
+- kind: reply
+  properties:
   - name: task_id
   - name: create_time
 

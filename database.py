@@ -56,3 +56,4 @@ class reply(ndb.Model):
     creator=ndb.StringProperty()
     reply_content = ndb.StringProperty()
     create_time = ndb.DateTimeProperty(auto_now_add=True)
+    replyto=ndb.StringProperty()
