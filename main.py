@@ -93,6 +93,19 @@ class finishprivatetask(webapp2.RequestHandler):
             task.finished=1
             task.put()
 
+class finishcommontask(webapp2.RequestHandler):
+    def post(self):
+
+        taskid=self.request.params['taskid']
+        userid=self.request.params['userid']
+        taskid=int(taskid)
+        task_query = database.subscribe.query(database.subscribe.task_id == taskid)
+        tasks=task_query.fetch()
+
+        for task in tasks:
+            task.finished=1
+            task.put()
+
 class createcommontask(webapp2.RequestHandler):
     def post(self):
 
@@ -112,7 +125,7 @@ class createcommontask(webapp2.RequestHandler):
 class updatecommontask(webapp2.RequestHandler):
     def post(self):
 
-        taskid = self.request.get('taskid')
+        taskid=self.request.params['taskid']
 
         task_query = database.commontask.query(database.commontask.task_id == taskid)
         tasks=task_query.fetch()
@@ -128,12 +141,18 @@ class deletecommontask(webapp2.RequestHandler):
     def post(self):
 
         taskid=self.request.params['taskid']
+
         taskid=int(taskid)
         task_query = database.commontask.query(database.commontask.task_id == taskid)
         tasks=task_query.fetch()
 
         for task in tasks:
             task.key.delete()
+
+        sub_query = database.subscribe.query(database.subscribe.commontask_id==taskid)
+        subs=sub_query.fetch()
+        for sub in subs:
+            sub.key.delete()
 
 class createcomment(webapp2.RequestHandler):
     def post(self):
@@ -235,9 +254,16 @@ class viewsinglecommontask(webapp2.RequestHandler):
         for s in sub:
             member.append(s.user_id)
 
+        setting_query=database.setting.query(database.setting.user_id==user_id)
+        settings =setting_query.fetch()
+
+        membericon=[]
+
+        for setting in settings:
+            membericon.append(setting.profileurl)
 
         taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember,
-                    'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,'member':member,
+                    'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,'member':member,'membericon':membericon,
                     'reply_content':reply_content,'replycomment_id': replycomment_id,'replycreate_time':replycreate_time,'replycreator':replycreator,'replyto':replyto}
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
@@ -282,6 +308,13 @@ class viewmytask(webapp2.RequestHandler):
     def get(self):
         user_id = self.request.get('userid')
 
+
+        setting_query=database.setting.query(database.setting.user_id==user_id)
+        settings =setting_query.fetch()
+        if settings==[]:
+            a=database.setting(user_id=user_id)
+            a.put()
+
         privatetask_query = database.privatetask.query(database.privatetask.creator == user_id)
         privatetasks=privatetask_query.fetch()
 
@@ -317,7 +350,7 @@ class viewmytask(webapp2.RequestHandler):
         subs=sub_query.fetch()
         subtaskid=[]
         for sub in subs:
-            subtaskid.append(sub.task_id)
+            subtaskid.append(sub.commontask_id)
 
         subcommontask_query = database.commontask.query()
         subtasks=subcommontask_query.fetch()
@@ -355,13 +388,31 @@ class viewmytask(webapp2.RequestHandler):
                 joinlocation.append(tasks.location)
                 joindescription.append(tasks.description)
                 joinnumofmember.append(tasks.numofmember)
-                jointask_id.append(tasks.tasks_id)
+                jointask_id.append(tasks.task_id)
 
+        sq=database.subscribe.query(database.subscribe.user_id==user_id)
+        t=sq.fetch()
+        remindname=[]
+        remindid=[]
+        reminddue=[]
+        remindjoindue=[]
+        remindfinish=[]
+        remindoverdue=[]
+
+        for tt in t:
+            if tt.commontask_id in jointask_id:
+                remindid.append(tt.commontask_id)
+                reminddue.append(tt.remind)
+                remindoverdue.append(tt.overdue)
+                remindfinish.append(tt.finished)
+                remindname.append(jointaskname[jointask_id.index(tt.commontask_id)])
+                remindjoindue.append(joindue[jointask_id.index(tt.commontask_id)])
 
         commonjson = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,
                       'pritaskid':pritaskid,'prifinished':prifinished,'prioverdue':prioverdue,'priremind':priremind,'taskname':taskname,'creator':creator,'due':due,
                       'location':location,'description':description,'numofmember':numofmember,'taskid':task_id,'jointaskname':jointaskname,'joincreator':joincreator,
-                      'joindue':joindue,'joinlocation':joinlocation,'joindescription':joindescription,'joinnumofmember':joinnumofmember,'jointaskid':jointask_id}
+                      'joindue':joindue,'joinlocation':joinlocation,'joindescription':joindescription,'joinnumofmember':joinnumofmember,'jointaskid':jointask_id,
+                      'remindname':remindname,'remindid':remindid,'reminddue':reminddue,'remindjoindue':remindjoindue,'remindfinish':remindfinish,'remindoverdue':remindoverdue}
         jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj2)
 
@@ -397,7 +448,6 @@ class updateprivateedue(webapp2.RequestHandler):
         email=0
 
         for task in tasks:
-
             set_query = database.setting.query(database.setting.user_id==task.creator)
             sets=set_query.fetch()
             for s in sets:
@@ -418,6 +468,38 @@ class updateprivateedue(webapp2.RequestHandler):
                 except:
                     pass
             task.put()
+
+        email=0
+        sq=database.subscribe.query()
+        t=sq.fetch()
+
+        for tt in t:
+            set_query = database.setting.query(database.setting.user_id==tt.user_id)
+            sets=set_query.fetch()
+            for s in sets:
+                email=s.email
+
+            tq=database.commontask.query(database.commontask.task_id==tt.commontask_id)
+            p=tq.fetch()
+            for p1 in p:
+                pdue=p1.due
+
+                try:
+                    due = datetime.datetime.strptime(pdue, "%Y-%m-%d %H:%M")
+                    remind = datetime.datetime.strptime(tt.remind, "%Y-%m-%d %H:%M")
+                    now  = datetime.datetime.now()
+                    if now>due:
+                        tt.overdue =1
+                    if remind==now and email==1:
+                        mail.send_mail(sender="TASK :: info <sunming2725@gmail.com>",
+                                to=str(task.creator),
+                                subject=task.name+"(Due Reminder From TASK)",
+                                body="There is only 1 days left for "+task.name)
+
+                except:
+                    pass
+            tt.put()
+
 
 class viewreply(webapp2.RequestHandler):
     def get(self):
@@ -539,40 +621,36 @@ class updatesetting(webapp2.RequestHandler):
         setting=setting_query.fetch()
         email=self.request.params['email']
         email=int(email)
-
-        if setting==[]:
-            a=database.setting(email=email,user_id=user_id)
-            a.put()
-        else:
-            for s in setting:
-                s.email=email
-                s.put()
+        for s in setting:
+            s.email=email
+            s.put()
 
 class join(webapp2.RequestHandler):
     def post(self):
         operation=self.request.params['operation']
         userid=self.request.params['userid']
         taskid=self.request.params['taskid']
-        d=self.request.params['d']
-        h=self.request.params['h']
-        m=self.request.params['m']
-
-        if d:
-            d=int(d)
-        else:
-            d=0
-        if h:
-            h=int(h)
-        else:
-            h=0
-        if m:
-            m=int(m)
-        else:
-            m=0
+        taskid=int(taskid)
 
 
         if operation=="join":
             due=""
+            d=self.request.params['d']
+            h=self.request.params['h']
+            m=self.request.params['m']
+
+            if d:
+                d=int(d)
+            else:
+                d=0
+            if h:
+                h=int(h)
+            else:
+                h=0
+            if m:
+                m=int(m)
+            else:
+                m=0
             task_query = database.commontask.query(database.commontask.task_id==taskid)
             task=task_query.fetch()
             for t in task:
@@ -582,11 +660,26 @@ class join(webapp2.RequestHandler):
             b  = a - datetime.timedelta(days=d, hours=h, minutes=m)
             c=b.strftime("%Y-%m-%d %H:%M")
 
-            j=database.subscribe(commontask_id=taskid,user_id=userid,remind=c)
+            j=database.subscribe(commontask_id=taskid,user_id=userid,remind=c,finished=0,overdue=0)
             j.put()
 
+
+            setting_query = database.setting.query(database.setting.user_id==userid)
+            setting=setting_query.fetch()
+            # profileurl=self.request.params['profileurl']
+
+            if setting==[]:
+                a=database.setting(email=0,user_id=userid)
+                a.put()
+            else:
+                for s in setting:
+                    s.profileurl=s.profileurl
+                    s.put()
+
+
+
         elif operation=="cancel":
-            sub_query = database.subscribe.query(database.privatetask.task_id == taskid)
+            sub_query = database.subscribe.query(database.subscribe.commontask_id == taskid)
             subs=sub_query.fetch()
 
             for sub in subs:
@@ -639,6 +732,7 @@ app = webapp2.WSGIApplication([
     ('/deleteprivatetask', deleteprivatetask),
     ('/deletecommontask', deletecommontask),
     ('/finishprivatetask', finishprivatetask),
+    ('/finishcommontask', finishcommontask),
     ('/updateprivateedue', updateprivateedue),
     ('/searchtask', searchtask),
     ('/suggest', suggest),
