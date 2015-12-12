@@ -18,6 +18,7 @@ class subscribe(ndb.Model):
     user_id=ndb.StringProperty()
     overdue=ndb.IntegerProperty()
     finished=ndb.IntegerProperty()
+    remind=ndb.IntegerProperty()
 
 class commontask(ndb.Model):
     task_id = ndb.IntegerProperty()
@@ -41,6 +42,7 @@ class privatetask(ndb.Model):
     description=ndb.StringProperty()
     finished=ndb.IntegerProperty()
     overdue=ndb.IntegerProperty()
+    remind=ndb.StringProperty()
 
 class comment(ndb.Model):
     task_id=ndb.IntegerProperty()
@@ -57,3 +59,9 @@ class reply(ndb.Model):
     reply_content = ndb.StringProperty()
     create_time = ndb.DateTimeProperty(auto_now_add=True)
     replyto=ndb.StringProperty()
+
+class setting(ndb.Model):
+    email = ndb.IntegerProperty()
+    user_id=ndb.StringProperty()
+    overdue=ndb.IntegerProperty()
+    finished=ndb.IntegerProperty()

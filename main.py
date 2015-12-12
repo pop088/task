@@ -30,8 +30,28 @@ class createprivatetask(webapp2.RequestHandler):
         taskid=self.request.params['taskid']
         taskid=int(taskid)
 
-        task=database.privatetask(finished=0,overdue=0,task_name=taskname,creator=creator,due=due,description=description,
-                                  task_id=taskid)
+        d=self.request.params['d']
+        h=self.request.params['h']
+        m=self.request.params['m']
+
+        if d:
+            d=int(d)
+        else:
+            d=0
+        if h:
+            h=int(h)
+        else:
+            h=0
+        if m:
+            m=int(m)
+        else:
+            m=0
+
+        a = datetime.datetime.strptime(due, "%Y-%m-%d %H:%M")
+        b  = a - datetime.timedelta(days=d, hours=h, minutes=m)
+        c=b.strftime("%Y-%m-%d %H:%M")
+
+        task=database.privatetask(finished=0,overdue=0,task_name=taskname,creator=creator,due=due,description=description, remind=c,task_id=taskid)
 
         task.put()
 
@@ -117,7 +137,6 @@ class deletecommontask(webapp2.RequestHandler):
 
 class createcomment(webapp2.RequestHandler):
     def post(self):
-
         creator=self.request.params['creator']
         content=self.request.params['content']
         taskid=self.request.params['taskid']
@@ -210,7 +229,7 @@ class viewsinglecommontask(webapp2.RequestHandler):
 # get replys
 
         subquery=database.subscribe.query(database.subscribe.commontask_id == taskid)
-        sub=reply_query.fetch()
+        sub=subquery.fetch()
 
         member=[]
         for s in sub:
@@ -274,6 +293,7 @@ class viewmytask(webapp2.RequestHandler):
         pritaskid=[]
         prifinished=[]
         prioverdue=[]
+        priremind=[]
 
         for task in privatetasks:
             pritaskname.append(task.task_name)
@@ -284,6 +304,7 @@ class viewmytask(webapp2.RequestHandler):
             pritaskid.append(task.task_id)
             prifinished.append(task.finished)
             prioverdue.append(task.overdue)
+            priremind.append(task.remind)
 
         # pri = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,'pritaskid':pritaskid}
         # jsonObj1 = json.dumps(pri, sort_keys=True,indent=4, separators=(',', ': '))
@@ -338,7 +359,7 @@ class viewmytask(webapp2.RequestHandler):
 
 
         commonjson = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,
-                      'pritaskid':pritaskid,'prifinished':prifinished,'prioverdue':prioverdue,'taskname':taskname,'creator':creator,'due':due,
+                      'pritaskid':pritaskid,'prifinished':prifinished,'prioverdue':prioverdue,'priremind':priremind,'taskname':taskname,'creator':creator,'due':due,
                       'location':location,'description':description,'numofmember':numofmember,'taskid':task_id,'jointaskname':jointaskname,'joincreator':joincreator,
                       'joindue':joindue,'joinlocation':joinlocation,'joindescription':joindescription,'joinnumofmember':joinnumofmember,'jointaskid':jointask_id}
         jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
@@ -373,50 +394,29 @@ class updateprivateedue(webapp2.RequestHandler):
         task_query = database.privatetask.query()
         tasks=task_query.fetch()
 
-        for task in tasks:
-            due = task.due
-            duesplit=due.split(" ")
-            if len(duesplit)!=2:
-                break
-            date=duesplit[0]
-            time=duesplit[1]
-            datesplit = date.split("-")
-            if len(datesplit)!=2:
-                break
-            year = datesplit[0]
-            month = datesplit[1]
-            day = datesplit[2]
-            timesplit = time.split(":")
-            if len(timesplit)!=2:
-                break
-            hour = timesplit[0]
-            minute = timesplit[1]
+        email=0
 
-            nowtime = str(datetime.datetime.now())
-            nowyear = nowtime[:4]
-            nowmonth= nowtime[5:7]
-            nowday = nowtime[8:10]
-            nowhour = nowtime[12:14]
-            nowminute = nowtime[15:17]
-            if int(nowyear)>int(year):
-                task.overdue =1
-            else:
-                if int(nowmonth)>int(month):
-                    task.overdue =1
-                else:
-                    if int(nowday)>int(day):
+        for task in tasks:
+
+            set_query = database.setting.query(database.setting.user_id==task.creator)
+            sets=set_query.fetch()
+            for s in sets:
+                email=s.email
+
+                try:
+                    due = datetime.datetime.strptime(task.due, "%Y-%m-%d %H:%M")
+                    remind = datetime.datetime.strptime(task.remind, "%Y-%m-%d %H:%M")
+                    now  = datetime.datetime.now()
+                    if now>due:
                         task.overdue =1
-                    elif int(nowday)==int(day)-1 and nowhour==hour and nowminute==nowminute:
+                    if remind==now and email==1:
                         mail.send_mail(sender="TASK :: info <sunming2725@gmail.com>",
-                        to=str(task.creator),
-                        subject=task.name+"(Due Reminder From TASK)",
-                        body="There is only 1 days left for "+task.name)
-                    else:
-                        if int(nowhour)>int(hour):
-                            task.overdue =1
-                        else:
-                            if int(nowminute)>int(minute):
-                                task.overdue =1
+                                to=str(task.creator),
+                                subject=task.name+"(Due Reminder From TASK)",
+                                body="There is only 1 days left for "+task.name)
+
+                except:
+                    pass
             task.put()
 
 class viewreply(webapp2.RequestHandler):
@@ -516,28 +516,87 @@ class suggest(webapp2.RequestHandler):
         jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj2)
 
-def transtime(time):
-        time2=str(time)
-        time3=time2[:19]
-        t4=time3.split(" ")
-        day=t4[0][8:10]
-        hour=t4[1][:2]
-        inthour=int(hour)
-        intday=int(day)
-        if inthour>=6:
-            inthour-=6
+class setting(webapp2.RequestHandler):
+    def get(self):
+        user_id = self.request.get('userid')
+
+        setting_query = database.setting.query(database.setting.user_id==user_id)
+        setting=setting_query.fetch()
+
+        email=[]
+
+        for s in setting:
+            email.append(s.email)
+
+        taskjson = {'email':email}
+        jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
+        self.response.write(jsonObj1)
+
+class updatesetting(webapp2.RequestHandler):
+    def post(self):
+        user_id = self.request.get('userid')
+
+        setting_query = database.setting.query(database.setting.user_id==user_id)
+        setting=setting_query.fetch()
+        email=self.request.params['email']
+
+        if setting==None:
+            a=database.setting(email=email,user_id=user_id)
+            a.put()
         else:
-            inthour=inthour+24-6
-            intday-=1
+            for s in setting:
+                s.email=email
+                s.put()
 
-        newhour=str(inthour)
-        if inthour<10:
-            newhour="0"+str(inthour)
+class join(webapp2.RequestHandler):
+    def post(self):
+        operation=self.request.params['operation']
+        userid=self.request.params['userid']
+        taskid=self.request.params['taskid']
+        d=self.request.params['d']
+        h=self.request.params['h']
+        m=self.request.params['m']
 
-        newday=str(intday)
+        if d:
+            d=int(d)
+        else:
+            d=0
+        if h:
+            h=int(h)
+        else:
+            h=0
+        if m:
+            m=int(m)
+        else:
+            m=0
 
-        finals=t4[0][:8]+newday+" "+newhour+t4[1][2:5]
-        return finals
+
+        if operation=="join":
+            due=""
+            task_query = database.commontask.query(database.commontask.task_id==taskid)
+            task=task_query.fetch()
+            for t in task:
+                due=t.due
+
+            a = datetime.datetime.strptime(due, "%Y-%m-%d %H:%M")
+            b  = a - datetime.timedelta(days=d, hours=h, minutes=m)
+            c=b.strftime("%Y-%m-%d %H:%M")
+
+            j=database.subscribe(commontask_id=taskid,user_id=userid,remind=c)
+            j.put()
+
+        elif operation=="cancel":
+            sub_query = database.subscribe.query(database.privatetask.task_id == taskid)
+            subs=sub_query.fetch()
+
+            for sub in subs:
+                sub.key.delete()
+
+
+def transtime(time):
+        b  = time - datetime.timedelta(hours=6)
+        c=b.strftime("%Y-%m-%d %H:%M")
+        return c
 
 def le(input_x, input_y):
         xlen = len(input_x) + 1
@@ -582,6 +641,8 @@ app = webapp2.WSGIApplication([
     ('/finishprivatetask', finishprivatetask),
     ('/updateprivateedue', updateprivateedue),
     ('/searchtask', searchtask),
-    ('/suggest', suggest)
+    ('/suggest', suggest),
+    ('/setting', setting),
+    ('/updatesetting', updatesetting)
 
 ], debug=True)

@@ -1,4 +1,4 @@
 cron:
 - description: update
   url: /updateprivateedue
-  schedule: every 5 minutes
+  schedule: every 1 minutes
