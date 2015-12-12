@@ -534,13 +534,13 @@ class setting(webapp2.RequestHandler):
 
 class updatesetting(webapp2.RequestHandler):
     def post(self):
-        user_id = self.request.get('userid')
-
+        user_id= self.request.params['userid']
         setting_query = database.setting.query(database.setting.user_id==user_id)
         setting=setting_query.fetch()
         email=self.request.params['email']
+        email=int(email)
 
-        if setting==None:
+        if setting==[]:
             a=database.setting(email=email,user_id=user_id)
             a.put()
         else:
@@ -643,6 +643,7 @@ app = webapp2.WSGIApplication([
     ('/searchtask', searchtask),
     ('/suggest', suggest),
     ('/setting', setting),
-    ('/updatesetting', updatesetting)
+    ('/updatesetting', updatesetting),
+    ('/join', join)
 
 ], debug=True)
