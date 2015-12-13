@@ -171,8 +171,16 @@ class createcomment(webapp2.RequestHandler):
         commentid=hash(content+str(taskid))
 
         comment=database.comment(task_id=taskid,creator=creator,comment_content=content,comment_id=commentid)
-
         comment.put()
+
+        owner=""
+        task_query=database.commontask.query(database.commontask.task_id==taskid)
+        tasks=task_query.fetch()
+        for task in tasks:
+            owner=task.creator
+
+        replyremind=database.replyremind(taskid=taskid,sender=creator,receiver=owner)
+        replyremind.put()
 
 class createreply(webapp2.RequestHandler):
     def post(self):
@@ -187,8 +195,10 @@ class createreply(webapp2.RequestHandler):
         replyid=hash(content+str(taskid))
 
         reply=database.reply(reply_id=replyid,creator=creator,reply_content=content,comment_id=commentid,task_id=taskid,replyto=replyto)
-
         reply.put()
+
+        replyremind=database.replyremind(taskid=taskid,sender=creator,receiver=replyto)
+        replyremind.put()
 
 class viewsinglecommontask(webapp2.RequestHandler):
     def get(self):
@@ -267,14 +277,44 @@ class viewsinglecommontask(webapp2.RequestHandler):
 
         membericon=[]
         membername=[]
-        for setting in settings:
-            if setting.user_id in member:
-                membericon.append(setting.profileurl)
-                membername.append(setting.user_id)
+
+        email_visible2=[]
+        dob_visible2=[]
+        gender_visible2=[]
+
+
+        for s in settings:
+            if s.user_id in member:
+                membericon.append(s.profileurl)
+                membername.append(s.user_id)
+                if s.email_visible==1:
+                    email_visible2.append(s.email)
+                else:
+                    email_visible2.append("Email Invisible")
+
+                if s.dob_visible==1:
+                    dob_visible2.append(s.dob)
+                else:
+                    dob_visible2.append("Birthday Invisible")
+
+                if s.gender_visible==1:
+                    if s.gender==0:
+                        gender_visible2.append("Male")
+                    elif s.gender==1:
+                        gender_visible2.append("Female")
+                    elif s.gender==2:
+                        gender_visible2.append("Others")
+                else:
+                    gender_visible2.append("Gender Invisible")
+
+
+
+
 
         taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember,
-                    'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,'member':membername,'membericon':membericon,
-                    'reply_content':reply_content,'replycomment_id': replycomment_id,'replycreate_time':replycreate_time,'replycreator':replycreator,'replyto':replyto}
+                    'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,'member':membername,
+                    'membericon':membericon,'reply_content':reply_content,'replycomment_id': replycomment_id,'replycreate_time':replycreate_time,'replycreator':replycreator,
+                    'replyto':replyto,'email_':email_visible2,'gender_':gender_visible2,'dob_':dob_visible2}
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
 
@@ -322,7 +362,7 @@ class viewmytask(webapp2.RequestHandler):
         setting_query=database.setting.query(database.setting.user_id==user_id)
         settings =setting_query.fetch()
         if settings==[]:
-            a=database.setting(user_id=user_id,email_notification=0,profile_visible=0,email_visible=0)
+            a=database.setting(user_id=user_id,email_notification=0,gender_visible=0,email_visible=0,dob_visible=0)
             a.put()
 
         privatetask_query = database.privatetask.query(database.privatetask.creator == user_id)
@@ -418,11 +458,23 @@ class viewmytask(webapp2.RequestHandler):
                 remindname.append(jointaskname[jointask_id.index(tt.commontask_id)])
                 remindjoindue.append(joindue[jointask_id.index(tt.commontask_id)])
 
+        rr_query=database.replyremind.query(database.replyremind.receiver==user_id)
+        rr=rr_query.fetch()
+
+        sender=[]
+        newmsgtaskid=[]
+
+        for r in rr:
+            sender.append(r.sender)
+            newmsgtaskid.append(r.taskid)
+
+
         commonjson = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,
                       'pritaskid':pritaskid,'prifinished':prifinished,'prioverdue':prioverdue,'priremind':priremind,'taskname':taskname,'creator':creator,'due':due,
                       'location':location,'description':description,'numofmember':numofmember,'taskid':task_id,'jointaskname':jointaskname,'joincreator':joincreator,
                       'joindue':joindue,'joinlocation':joinlocation,'joindescription':joindescription,'joinnumofmember':joinnumofmember,'jointaskid':jointask_id,
-                      'remindname':remindname,'remindid':remindid,'reminddue':reminddue,'remindjoindue':remindjoindue,'remindfinish':remindfinish,'remindoverdue':remindoverdue}
+                      'remindname':remindname,'remindid':remindid,'reminddue':reminddue,'remindjoindue':remindjoindue,'remindfinish':remindfinish,'remindoverdue':remindoverdue,
+                      'sender':sender,'newmsgtaskid':newmsgtaskid}
         jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj2)
 
@@ -616,24 +668,49 @@ class setting(webapp2.RequestHandler):
         setting=setting_query.fetch()
 
         email_notification=[]
+
         email_visible=[]
-        profile_visible=[]
+        dob_visible=[]
+        gender_visible=[]
+
         email=[]
         dob=[]
         gender=[]
+
         profileurl=[]
+
+        # email_visible2=[]
+        # dob_visible2=[]
+        # gender_visible2=[]
 
         for s in setting:
             email_notification.append(s.email_notification)
             email.append(s.email)
             email_visible.append(s.email_visible)
-            profile_visible.append(s.profile_visible)
+            dob_visible.append(s.dob_visible)
+            gender_visible.append(s.gender_visible)
+
+            # if s.email_visible==1:
+            #     email_visible2.append(s.email)
+            # else:
+            #     email_visible2.append("Email Invisible")
+            #
+            # if s.dob_visible==1:
+            #     dob_visible2.append(s.dob)
+            # else:
+            #     dob_visible2.append("Birthday Invisible")
+            #
+            # if s.gender_visible==1:
+            #     gender_visible2.append(s.gender)
+            # else:
+            #     gender_visible2.append("Gender Invisible")
+
             dob.append(s.dob)
             gender.append(s.gender)
             profileurl.append(s.profileurl)
 
         taskjson = {'email_notification':email_notification,'dob':dob,'gender':gender,'profileurl':profileurl,'email':email,
-                    'email_visible':email_visible,'profile_visible':profile_visible }
+                    'email_visible':email_visible,'gender_visible':gender_visible,'dob_visible':dob_visible }
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
 
@@ -644,20 +721,29 @@ class updatesetting(webapp2.RequestHandler):
         setting=setting_query.fetch()
 
         email_notification=None
+
         email_visible=None
-        profile_visible=None
+        gender_visible=None
+        dob_visible=None
+
         email=None
         dob=None
         gender=None
         profileurl=None
+
         try:
             email_visible=self.request.params['email_visible']
             email_visible=int(email_visible)
         except:
             pass
         try:
-            profile_visible=self.request.params['profile_visible']
-            profile_visible=int(profile_visible)
+            gender_visible=self.request.params['gender_visible']
+            gender_visible=int(gender_visible)
+        except:
+            pass
+        try:
+            dob_visible=self.request.params['dob_visible']
+            dob_visible=int(dob_visible)
         except:
             pass
         try:
@@ -689,8 +775,10 @@ class updatesetting(webapp2.RequestHandler):
         for s in setting:
             if email_visible!=None:
                 s.email_visible=email_visible
-            if profile_visible!=None:
-                s.profile_visible=profile_visible
+            if gender_visible!=None:
+                s.profile_visible=gender_visible
+            if dob_visible!=None:
+                s.dob_visible=dob_visible
             if email_notification!=None:
                 s.email_notification=email_notification
             if email!=None:

@@ -62,13 +62,17 @@ class reply(ndb.Model):
 
 class setting(ndb.Model):
     email_notification = ndb.IntegerProperty()
+
     email_visible = ndb.IntegerProperty()
-    profile_visible = ndb.IntegerProperty()
     email=ndb.StringProperty()
+
     user_id=ndb.StringProperty()
     profileurl=ndb.StringProperty()
+
     gender=ndb.StringProperty()
+    gender_visible=ndb.IntegerProperty()
     dob=ndb.StringProperty()
+    dob_visible=ndb.IntegerProperty()
 
 class replyremind(ndb.Model):
     sender=ndb.StringProperty()
