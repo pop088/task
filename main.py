@@ -126,16 +126,24 @@ class updatecommontask(webapp2.RequestHandler):
     def post(self):
 
         taskid=self.request.params['taskid']
+        taskid=int(taskid)
 
         task_query = database.commontask.query(database.commontask.task_id == taskid)
         tasks=task_query.fetch()
 
+        userid=""
+
         for task in tasks:
             task.taskname=self.request.params['taskname']
             task.due=self.request.params['due']
-            task.location=self.request.params['location']
             task.description=self.request.params['description']
+            userid=task.creator
             task.put()
+
+        if int(self.request.params['checked'])==1:
+            j=database.subscribe(commontask_id=taskid,user_id=userid,finished=0,overdue=0)
+            j.put()
+
 
 class deletecommontask(webapp2.RequestHandler):
     def post(self):
@@ -254,16 +262,18 @@ class viewsinglecommontask(webapp2.RequestHandler):
         for s in sub:
             member.append(s.user_id)
 
-        setting_query=database.setting.query(database.setting.user_id==user_id)
+        setting_query=database.setting.query()
         settings =setting_query.fetch()
 
         membericon=[]
-
+        membername=[]
         for setting in settings:
-            membericon.append(setting.profileurl)
+            if setting.user_id in member:
+                membericon.append(setting.profileurl)
+                membername.append(setting.user_id)
 
         taskjson = {'taskname':taskname,'creator':creator,'due':due,'location':location,'description':description,'create_time':create_time,'numofmember':numofmember,
-                    'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,'member':member,'membericon':membericon,
+                    'comment_content':comment_content,'comment_id':comment_id,'commentcreate_time':commentcreate_time,'commentcreator':commentcreator,'member':membername,'membericon':membericon,
                     'reply_content':reply_content,'replycomment_id': replycomment_id,'replycreate_time':replycreate_time,'replycreator':replycreator,'replyto':replyto}
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
@@ -312,7 +322,7 @@ class viewmytask(webapp2.RequestHandler):
         setting_query=database.setting.query(database.setting.user_id==user_id)
         settings =setting_query.fetch()
         if settings==[]:
-            a=database.setting(user_id=user_id)
+            a=database.setting(user_id=user_id,email_notification=0,profile_visible=0,email_visible=0)
             a.put()
 
         privatetask_query = database.privatetask.query(database.privatetask.creator == user_id)
@@ -451,7 +461,7 @@ class updateprivateedue(webapp2.RequestHandler):
             set_query = database.setting.query(database.setting.user_id==task.creator)
             sets=set_query.fetch()
             for s in sets:
-                email=s.email
+                email=s.email_notification
 
                 try:
                     due = datetime.datetime.strptime(task.due, "%Y-%m-%d %H:%M")
@@ -477,7 +487,7 @@ class updateprivateedue(webapp2.RequestHandler):
             set_query = database.setting.query(database.setting.user_id==tt.user_id)
             sets=set_query.fetch()
             for s in sets:
-                email=s.email
+                email=s.email_notification
 
             tq=database.commontask.query(database.commontask.task_id==tt.commontask_id)
             p=tq.fetch()
@@ -605,12 +615,25 @@ class setting(webapp2.RequestHandler):
         setting_query = database.setting.query(database.setting.user_id==user_id)
         setting=setting_query.fetch()
 
+        email_notification=[]
+        email_visible=[]
+        profile_visible=[]
         email=[]
+        dob=[]
+        gender=[]
+        profileurl=[]
 
         for s in setting:
+            email_notification.append(s.email_notification)
             email.append(s.email)
+            email_visible.append(s.email_visible)
+            profile_visible.append(s.profile_visible)
+            dob.append(s.dob)
+            gender.append(s.gender)
+            profileurl.append(s.profileurl)
 
-        taskjson = {'email':email}
+        taskjson = {'email_notification':email_notification,'dob':dob,'gender':gender,'profileurl':profileurl,'email':email,
+                    'email_visible':email_visible,'profile_visible':profile_visible }
         jsonObj1 = json.dumps(taskjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj1)
 
@@ -619,10 +642,70 @@ class updatesetting(webapp2.RequestHandler):
         user_id= self.request.params['userid']
         setting_query = database.setting.query(database.setting.user_id==user_id)
         setting=setting_query.fetch()
-        email=self.request.params['email']
-        email=int(email)
+
+        email_notification=None
+        email_visible=None
+        profile_visible=None
+        email=None
+        dob=None
+        gender=None
+        profileurl=None
+        try:
+            email_visible=self.request.params['email_visible']
+            email_visible=int(email_visible)
+        except:
+            pass
+        try:
+            profile_visible=self.request.params['profile_visible']
+            profile_visible=int(profile_visible)
+        except:
+            pass
+        try:
+            email_notification=self.request.params['email_notification']
+            email_notification=int(email_notification)
+        except:
+            pass
+
+        try:
+            email=self.request.params['email']
+            email=int(email)
+        except:
+            pass
+
+        try:
+            dob=self.request.params['dob']
+        except:
+            pass
+        try:
+            gender=self.request.params['gender']
+            gender=int(gender)
+        except:
+            pass
+        try:
+            profileurl=self.request.params['profileurl']
+        except:
+            pass
+
         for s in setting:
-            s.email=email
+            if email_visible!=None:
+                s.email_visible=email_visible
+            if profile_visible!=None:
+                s.profile_visible=profile_visible
+            if email_notification!=None:
+                s.email_notification=email_notification
+            if email!=None:
+                s.email=email
+            if gender!=None:
+                if gender==1:
+                    s.gender="female"
+                elif gender ==0:
+                    s.gender="male"
+                elif gender==2:
+                    s.gender="others"
+            if profileurl!=None:
+                s.profileurl=profileurl
+            if dob!=None:
+                s.dob=dob
             s.put()
 
 class join(webapp2.RequestHandler):
@@ -664,17 +747,17 @@ class join(webapp2.RequestHandler):
             j.put()
 
 
-            setting_query = database.setting.query(database.setting.user_id==userid)
-            setting=setting_query.fetch()
-            # profileurl=self.request.params['profileurl']
-
-            if setting==[]:
-                a=database.setting(email=0,user_id=userid)
-                a.put()
-            else:
-                for s in setting:
-                    s.profileurl=s.profileurl
-                    s.put()
+            # setting_query = database.setting.query(database.setting.user_id==userid)
+            # setting=setting_query.fetch()
+            # # profileurl=self.request.params['profileurl']
+            #
+            # if setting==[]:
+            #     a=database.setting(email_notification=0,user_id=userid)
+            #     a.put()
+            # else:
+            #     for s in setting:
+            #         s.profileurl=s.profileurl
+            #         s.put()
 
 
 
@@ -684,6 +767,26 @@ class join(webapp2.RequestHandler):
 
             for sub in subs:
                 sub.key.delete()
+
+class updatereplyremind(webapp2.RequestHandler):
+    def post(self):
+        user_id= self.request.params['userid']
+        operation=self.request.params['operation']
+        sender=self.request.params['sender']
+        receiver=self.request.params['receiver']
+        taskid=self.request.params['taskid']
+
+        if operation=="add":
+
+            replyremind=database.replyremind(taskid=taskid,sender=sender,receiver=receiver)
+            replyremind.put()
+
+        elif operation=="delete":
+            remind_query = database.replyremind.query(ndb.AND(database.replyremind.taskid==taskid,database.replyremind.sender==sender,
+                                                              database.replyremind.receiver==receiver))
+            reminds=remind_query.fetch()
+            for r in reminds:
+                r.key.delete()
 
 
 def transtime(time):
@@ -738,6 +841,6 @@ app = webapp2.WSGIApplication([
     ('/suggest', suggest),
     ('/setting', setting),
     ('/updatesetting', updatesetting),
-    ('/join', join)
-
+    ('/join', join),
+    ('/updatereplyremind',updatereplyremind)
 ], debug=True)
