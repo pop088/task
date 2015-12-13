@@ -876,6 +876,21 @@ class updatereplyremind(webapp2.RequestHandler):
             for r in reminds:
                 r.key.delete()
 
+class send_email(webapp2.RequestHandler):
+    def post(self):
+        receiver= self.request.params['receiver']
+        sender=self.request.params['sender']
+        sendername=self.request.params['sendername']
+        body=self.request.params['body']
+        subject=self.request.params['subject']
+        try:
+            mail.send_mail(sender=sendername+"<"+sender+">",
+                                to=receiver,
+                                subject=subject,
+                                body=body)
+        except:
+            pass
+
 
 def transtime(time):
         b  = time - datetime.timedelta(hours=6)
@@ -930,5 +945,6 @@ app = webapp2.WSGIApplication([
     ('/setting', setting),
     ('/updatesetting', updatesetting),
     ('/join', join),
-    ('/updatereplyremind',updatereplyremind)
+    ('/updatereplyremind',updatereplyremind),
+    ('/send_email',send_email)
 ], debug=True)
