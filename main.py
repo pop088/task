@@ -47,9 +47,12 @@ class createprivatetask(webapp2.RequestHandler):
         else:
             m=0
 
-        a = datetime.datetime.strptime(due, "%Y-%m-%d %H:%M")
-        b  = a - datetime.timedelta(days=d, hours=h, minutes=m)
-        c=b.strftime("%Y-%m-%d %H:%M")
+        try:
+            a = datetime.datetime.strptime(due, "%Y-%m-%d %H:%M")
+            b  = a - datetime.timedelta(days=d, hours=h, minutes=m)
+            c=b.strftime("%Y-%m-%d %H:%M")
+        except:
+            pass
 
         task=database.privatetask(finished=0,overdue=0,task_name=taskname,creator=creator,due=due,description=description, remind=c,task_id=taskid)
 
@@ -99,7 +102,7 @@ class finishcommontask(webapp2.RequestHandler):
         taskid=self.request.params['taskid']
         userid=self.request.params['userid']
         taskid=int(taskid)
-        task_query = database.subscribe.query(database.subscribe.task_id == taskid)
+        task_query = database.subscribe.query(database.subscribe.commontask_id == taskid)
         tasks=task_query.fetch()
 
         for task in tasks:
@@ -162,6 +165,22 @@ class deletecommontask(webapp2.RequestHandler):
         for sub in subs:
             sub.key.delete()
 
+        reply_query = database.reply.query(database.reply.task_id==taskid)
+        replys=reply_query.fetch()
+        for reply in replys:
+            reply.key.delete()
+
+        comment_query = database.comment.query(database.comment.task_id==taskid)
+        comments=comment_query.fetch()
+        for comment in comments:
+            comment.key.delete()
+
+        replyremind_query = database.replyremind.query(database.replyremind.taskid==taskid)
+        replyreminds=replyremind_query.fetch()
+        for replyremind in replyreminds:
+            replyremind.key.delete()
+
+
 class createcomment(webapp2.RequestHandler):
     def post(self):
         creator=self.request.params['creator']
@@ -179,7 +198,7 @@ class createcomment(webapp2.RequestHandler):
         for task in tasks:
             owner=task.creator
 
-        replyremind=database.replyremind(taskid=taskid,sender=creator,receiver=owner)
+        replyremind=database.replyremind(taskid=taskid,sender=creator,receiver=owner,groupposition=-1)
         replyremind.put()
 
 class createreply(webapp2.RequestHandler):
@@ -190,6 +209,8 @@ class createreply(webapp2.RequestHandler):
         commentid=self.request.params['commentid']
         taskid=self.request.params['taskid']
         replyto=self.request.params['replyto']
+        groupposition=self.request.params['groupposition']
+        groupposition=int(groupposition)
         taskid=int(taskid)
         commentid=int(commentid)
         replyid=hash(content+str(taskid))
@@ -197,7 +218,7 @@ class createreply(webapp2.RequestHandler):
         reply=database.reply(reply_id=replyid,creator=creator,reply_content=content,comment_id=commentid,task_id=taskid,replyto=replyto)
         reply.put()
 
-        replyremind=database.replyremind(taskid=taskid,sender=creator,receiver=replyto)
+        replyremind=database.replyremind(taskid=taskid,sender=creator,receiver=replyto,groupposition=groupposition)
         replyremind.put()
 
 class viewsinglecommontask(webapp2.RequestHandler):
@@ -298,12 +319,7 @@ class viewsinglecommontask(webapp2.RequestHandler):
                     dob_visible2.append("Birthday Invisible")
 
                 if s.gender_visible==1:
-                    if s.gender==0:
-                        gender_visible2.append("Male")
-                    elif s.gender==1:
-                        gender_visible2.append("Female")
-                    elif s.gender==2:
-                        gender_visible2.append("Others")
+                    gender_visible2.append(s.gender)
                 else:
                     gender_visible2.append("Gender Invisible")
 
@@ -368,6 +384,8 @@ class viewmytask(webapp2.RequestHandler):
         privatetask_query = database.privatetask.query(database.privatetask.creator == user_id)
         privatetasks=privatetask_query.fetch()
 
+        sortp = sorted(privatetasks, key=lambda privatetask:privatetask.due,reverse=False)
+
         pritaskname=[]
         pricreator=[]
         pridue=[]
@@ -378,7 +396,7 @@ class viewmytask(webapp2.RequestHandler):
         prioverdue=[]
         priremind=[]
 
-        for task in privatetasks:
+        for task in sortp:
             pritaskname.append(task.task_name)
             pricreator.append(task.creator)
             pridue.append(task.due)
@@ -413,7 +431,9 @@ class viewmytask(webapp2.RequestHandler):
         numofmember=[]
         task_id=[]
 
-        for task in commontasks:
+        sortc = sorted(commontasks, key=lambda commontask:commontask.due,reverse=False)
+
+        for task in sortc:
             taskname.append(task.task_name)
             creator.append(task.creator)
             due.append(task.due)
@@ -430,7 +450,9 @@ class viewmytask(webapp2.RequestHandler):
         joinnumofmember=[]
         jointask_id=[]
 
-        for tasks in subtasks:
+        sorts = sorted(subtasks, key=lambda commontask:commontask.due,reverse=False)
+
+        for tasks in sorts:
             if tasks.task_id in subtaskid:
                 jointaskname.append(tasks.task_name)
                 joincreator.append(tasks.creator)
@@ -461,12 +483,29 @@ class viewmytask(webapp2.RequestHandler):
         rr_query=database.replyremind.query(database.replyremind.receiver==user_id)
         rr=rr_query.fetch()
 
+
         sender=[]
         newmsgtaskid=[]
+        newmsgtaskname=[]
+        newmsgtaskurl=[]
+        groupposition=[]
+
+        squery=database.setting.query()
+        sss=squery.fetch()
 
         for r in rr:
             sender.append(r.sender)
             newmsgtaskid.append(r.taskid)
+            for q in subtasks:
+                if q.task_id==r.taskid:
+                    newmsgtaskname.append(q.task_name)
+                    break
+            for s in sss:
+                if s.user_id==r.sender:
+                    newmsgtaskurl.append(s.profileurl)
+                    break
+            groupposition.append(r.groupposition)
+
 
 
         commonjson = {'pritaskname':pritaskname,'pricreator':pricreator,'pridue':pridue,'prilocation':prilocation,'pridescription':pridescription,
@@ -474,7 +513,7 @@ class viewmytask(webapp2.RequestHandler):
                       'location':location,'description':description,'numofmember':numofmember,'taskid':task_id,'jointaskname':jointaskname,'joincreator':joincreator,
                       'joindue':joindue,'joinlocation':joinlocation,'joindescription':joindescription,'joinnumofmember':joinnumofmember,'jointaskid':jointask_id,
                       'remindname':remindname,'remindid':remindid,'reminddue':reminddue,'remindjoindue':remindjoindue,'remindfinish':remindfinish,'remindoverdue':remindoverdue,
-                      'sender':sender,'newmsgtaskid':newmsgtaskid}
+                      'sender':sender,'newmsgtaskid':newmsgtaskid,'newmsgtaskname':newmsgtaskname,'newmsgtaskurl':newmsgtaskurl,'groupposition':groupposition}
         jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj2)
 
@@ -620,27 +659,39 @@ class suggest(webapp2.RequestHandler):
         mytask_query = database.commontask.query(database.commontask.creator == user_id)
         mytasks=mytask_query.fetch()
         mytaskname=[]
+        for ta in mytasks:
+            mytaskname.append(ta.task_name)
 
 # join part
+        finaltaskid=[]
+        sub_query=database.subscribe.query(database.subscribe.user_id==user_id)
+        subs =sub_query.fetch()
+
+        for sub in subs:
+            finaltaskid.append(sub.commontask_id)
+
+
         alltask_query = database.commontask.query()
         alltask=alltask_query.fetch()
         alltaskname=[]
-
         for tasks in alltask:
             alltaskname.append(tasks.task_name)
-        for ta in mytasks:
-            mytaskname.append(ta.task_name)
+            if tasks.task_id in finaltaskid and tasks.task_name not in mytaskname:
+                mytaskname.append(tasks.task_name)
 
         finaltaskname=[]
         for task in mytaskname:
             init=0
             tmp=""
             for i in alltaskname:
-                if le(task,i)<1 and le(task,i)>init and i not in finaltaskname:
+                if le(task,i)<1.0 and le(task,i)>init and i not in finaltaskname:
                     tmp=i
                     init=le(task,i)
             finaltaskname.append(tmp)
 
+        for name in finaltaskname:
+            if name in mytaskname:
+                finaltaskname.remove(name)
 
         taskname=[]
         creator=[]
@@ -656,7 +707,7 @@ class suggest(webapp2.RequestHandler):
                 numofmember.append(t.numofmember)
                 task_id.append(t.task_id)
 
-        commonjson = {'taskname':taskname,'creator':creator,'due':due,'numofmember':numofmember,'taskid':task_id}
+        commonjson = {'taskname':taskname,'creator':creator,'due':due,'numofmember':numofmember,'taskid':task_id,'subtaskid':finaltaskid}
         jsonObj2 = json.dumps(commonjson, sort_keys=True,indent=4, separators=(',', ': '))
         self.response.write(jsonObj2)
 
@@ -776,7 +827,7 @@ class updatesetting(webapp2.RequestHandler):
             if email_visible!=None:
                 s.email_visible=email_visible
             if gender_visible!=None:
-                s.profile_visible=gender_visible
+                s.gender_visible=gender_visible
             if dob_visible!=None:
                 s.dob_visible=dob_visible
             if email_notification!=None:
@@ -827,9 +878,12 @@ class join(webapp2.RequestHandler):
             for t in task:
                 due=t.due
 
-            a = datetime.datetime.strptime(due, "%Y-%m-%d %H:%M")
-            b  = a - datetime.timedelta(days=d, hours=h, minutes=m)
-            c=b.strftime("%Y-%m-%d %H:%M")
+            try:
+                a = datetime.datetime.strptime(due, "%Y-%m-%d %H:%M")
+                b  = a - datetime.timedelta(days=d, hours=h, minutes=m)
+                c=b.strftime("%Y-%m-%d %H:%M")
+            except:
+                pass
 
             j=database.subscribe(commontask_id=taskid,user_id=userid,remind=c,finished=0,overdue=0)
             j.put()
@@ -856,25 +910,21 @@ class join(webapp2.RequestHandler):
             for sub in subs:
                 sub.key.delete()
 
-class updatereplyremind(webapp2.RequestHandler):
+class deletereplyremind(webapp2.RequestHandler):
     def post(self):
-        user_id= self.request.params['userid']
-        operation=self.request.params['operation']
-        sender=self.request.params['sender']
-        receiver=self.request.params['receiver']
-        taskid=self.request.params['taskid']
 
-        if operation=="add":
+        sender_=self.request.params['sender']
+        receiver_=self.request.params['receiver']
+        taskid_=self.request.params['taskid']
+        groupposition_=self.request.params['groupposition']
+        groupposition_=int(groupposition_)
+        taskid_=int(taskid_)
 
-            replyremind=database.replyremind(taskid=taskid,sender=sender,receiver=receiver)
-            replyremind.put()
-
-        elif operation=="delete":
-            remind_query = database.replyremind.query(ndb.AND(database.replyremind.taskid==taskid,database.replyremind.sender==sender,
-                                                              database.replyremind.receiver==receiver))
-            reminds=remind_query.fetch()
-            for r in reminds:
-                r.key.delete()
+        remind_query = database.replyremind.query(ndb.AND(database.replyremind.taskid==taskid_,database.replyremind.sender==sender_,database.replyremind.receiver==receiver_,
+                                                          database.replyremind.groupposition==groupposition_))
+        reminds=remind_query.fetch()
+        for r in reminds:
+            r.key.delete()
 
 class send_email(webapp2.RequestHandler):
     def post(self):
@@ -883,14 +933,11 @@ class send_email(webapp2.RequestHandler):
         sendername=self.request.params['sendername']
         body=self.request.params['body']
         subject=self.request.params['subject']
-        try:
-            mail.send_mail(sender=sendername+"<"+sender+">",
-                                to=receiver,
-                                subject=subject,
-                                body=body)
-        except:
-            pass
 
+        mail.send_mail(sender="admins@task-1123.appspotmail.com",
+                            to=receiver,
+                            subject=subject,
+                            body=str(sendername)+"("+str(sender)+")"+"send you a message as follows: "+"\n"+str(body))
 
 def transtime(time):
         b  = time - datetime.timedelta(hours=6)
@@ -945,6 +992,6 @@ app = webapp2.WSGIApplication([
     ('/setting', setting),
     ('/updatesetting', updatesetting),
     ('/join', join),
-    ('/updatereplyremind',updatereplyremind),
+    ('/deletereplyremind',deletereplyremind),
     ('/send_email',send_email)
 ], debug=True)

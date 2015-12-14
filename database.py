@@ -78,4 +78,6 @@ class replyremind(ndb.Model):
     sender=ndb.StringProperty()
     receiver=ndb.StringProperty()
     taskid=ndb.IntegerProperty()
+    groupposition=ndb.IntegerProperty()
+
 
